@@ -1,0 +1,111 @@
+name: ci
+# Runs on pull requests and on pushes to main: the public copy under BeatOctant takes no pull requests, so a push to
+# main is where it is tested there. Documents and spikes/ are skipped, and a newer push to the same ref cancels the
+# older run. A v* tag also makes a draft GitHub Release with the .so and the .qmod once all three jobs pass.
+on:
+  pull_request:
+    paths-ignore: ["**.md", "LICENSE", "spikes/**"]
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths-ignore: ["**.md", "LICENSE", "spikes/**"]  # not applied to tags
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check the OctantSpecs token
+        # Only the private repository needs it: the public copy in the BeatOctant organization reads the public repositories
+        if: github.repository_owner == 'nejiman10'
+        env:
+          BEATPATHQUEST_CI_READ_BEATDOCS: ${{ secrets.BEATPATHQUEST_CI_READ_BEATDOCS }}
+        run: |
+          if [ -z "$BEATPATHQUEST_CI_READ_BEATDOCS" ]; then
+            echo "::error title=BEATPATHQUEST_CI_READ_BEATDOCS is not set::OctantSpecs is a private repository. Add a fine-grained token with read-only Contents access to nejiman10/OctantSpecs as the repository secret BEATPATHQUEST_CI_READ_BEATDOCS (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Fetch OctantSpecs at OCTANTSPECS_REF
+        env:
+          GIT_CONFIG_COUNT: ${{ github.repository_owner == 'nejiman10' && '1' || '0' }}  # no token in the public copy
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ secrets.BEATPATHQUEST_CI_READ_BEATDOCS }}@github.com/BeatOctant/OctantSpecs.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/BeatOctant/OctantSpecs
+        run: bash scripts/fetch-octantspecs.sh
+      - run: cmake -S core -B build/core -G "Unix Makefiles" -DOCTANTPATH_CORE_TESTS=ON
+      - run: cmake --build build/core -j
+      - run: build/core/octantpath-core-tests
+  proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: python3 -I -m unittest discover -s proxy/tests -v
+  mod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mod
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install qpm and ninja
+        run: |
+          curl -sSLf -o "$RUNNER_TEMP/qpm.zip" https://github.com/QuestPackageManager/QPM.CLI/releases/download/v1.5.11/qpm-linux-x64.zip
+          unzip -q "$RUNNER_TEMP/qpm.zip" -d "$RUNNER_TEMP/qpm"
+          chmod +x "$RUNNER_TEMP/qpm/qpm"
+          echo "$RUNNER_TEMP/qpm" >> "$GITHUB_PATH"
+          sudo apt-get install -y ninja-build
+      # The runner's latest NDK is too new for beatsaber-hook (libc++ rejects
+      # std::vector<T const>), so pin NDK 27.
+      - name: Use NDK 27
+        run: |
+          ndk=$(ls -d "$ANDROID_HOME"/ndk/27.* 2>/dev/null | sort -V | tail -n1)
+          if [ -z "$ndk" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;27.2.12479018" > /dev/null
+            ndk="$ANDROID_HOME/ndk/27.2.12479018"
+          fi
+          echo "$ndk" > ndkpath.txt && cat ndkpath.txt
+      - name: Cache qpm packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/share/QPM-RS
+          key: qpm-${{ hashFiles('mod/qpm.json', 'mod/qpm.shared.json') }}
+      - run: scripts/build.sh
+      # Kept only for a tag (the release job below) or a run by hand: pull requests and pushes are checked by the build
+      # itself, and their uploads filled the free plan's 0.5 GB of Actions storage.
+      - if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: octantpath-android
+          path: |
+            mod/build/liboctantpath.so
+            mod/OctantPath.qmod
+          if-no-files-found: error
+          retention-days: 3
+  release:
+    if: github.ref_type == 'tag'
+    needs: [core, proxy, mod]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write  # the draft release
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: octantpath-android
+          path: out  # the artifact keeps the paths under mod/: OctantPath.qmod and build/liboctantpath.so
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" out/OctantPath.qmod out/build/liboctantpath.so --repo "$GITHUB_REPOSITORY" --draft --title "OctantPathAndroid $GITHUB_REF_NAME" --notes "OctantPathAndroid $GITHUB_REF_NAME, the MOD (.qmod) and its library (.so). Very early and unstable."

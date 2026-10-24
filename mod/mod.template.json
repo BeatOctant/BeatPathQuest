@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Lauriethefish/QuestPatcher.QMod/main/QuestPatcher.QMod/Resources/qmod.schema.json",
+  "_QPVersion": "0.1.1",
+  "name": "${mod_name}",
+  "id": "${mod_id}",
+  "author": "nejiman10",
+  "version": "${version}",
+  "packageId": "com.beatgames.beatsaber",
+  "packageVersion": "1.37.0_9064817954",
+  "description": "OctantCompass の推薦をゲームの中で受け取る（Quest 版）",
+  "dependencies": [],
+  "modFiles": ["${binary}"],
+  "libraryFiles": [],
+  "fileCopies": [
+    {
+      "name": "NOTICE.txt",
+      "destination": "/sdcard/ModData/com.beatgames.beatsaber/Mods/octantpath/NOTICE.txt"
+    }
+  ]
+}

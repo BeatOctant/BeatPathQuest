@@ -1,0 +1,62 @@
+{
+  "sharedDir": "shared",
+  "dependenciesDir": "extern",
+  "version": "0.1.0",
+  "info": {
+    "name": "OctantPath",
+    "id": "octantpath",
+    "version": "0.1.0",
+    "url": "https://github.com/BeatOctant/OctantPathAndroid",
+    "additionalData": {
+      "overrideSoName": "liboctantpath.so",
+      "cmake": true
+    }
+  },
+  "workspace": {
+    "scripts": {},
+    "qmodIncludeDirs": [
+      "./build",
+      "./extern/libs"
+    ],
+    "qmodOutput": "./OctantPath.qmod"
+  },
+  "dependencies": [
+    {
+      "id": "beatsaber-hook",
+      "versionRange": "=5.1.9",
+      "additionalData": {}
+    },
+    {
+      "id": "scotland2",
+      "versionRange": "=0.1.4",
+      "additionalData": {
+        "includeQmod": false
+      }
+    },
+    {
+      "id": "paper",
+      "versionRange": "=3.7.0",
+      "additionalData": {}
+    },
+    {
+      "id": "bs-cordl",
+      "versionRange": "^3700.0.0",
+      "additionalData": {}
+    },
+    {
+      "id": "custom-types",
+      "versionRange": "=0.17.10",
+      "additionalData": {}
+    },
+    {
+      "id": "bsml",
+      "versionRange": "=0.4.43",
+      "additionalData": {}
+    },
+    {
+      "id": "songcore",
+      "versionRange": "=1.1.15",
+      "additionalData": {}
+    }
+  ]
+}
