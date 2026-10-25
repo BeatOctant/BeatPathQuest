@@ -13,7 +13,7 @@ struct Settings {
   int healthRetryIntervalSeconds = 10;
   int recommendationRequestTimeoutSeconds = 30;
   // 推薦を何曲ずつ見せるか。一度に頼むのはこの 3 倍（PC 版の最初の要求と同じ）
-  int mixDraftCount = 10;
+  int mixDraftCount = 5;
   // BeatSaver API。Quest はネットにつながないので、PC のプロキシ（OctantPathAndroid の proxy/）越しに引く。
   // プロキシには USB の adb reverse で届く（既定は 127.0.0.1:23288）
   std::string beatSaverApiUrl = "https://api.beatsaver.com/";

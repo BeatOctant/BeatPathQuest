@@ -162,7 +162,7 @@ TEST_CASE("推薦を頼むと設定の 3 倍の件数で送り、unknown_preset 
   REQUIRE(result->ok());
   CHECK(result->body->candidates.size() == 2);
   auto sent = nlohmann::json::parse(f.transport.requests.back().second.body);
-  CHECK(sent["count"] == 30);
+  CHECK(sent["count"] == 15);
   CHECK(sent["preset"] == "again");
   CHECK_FALSE(sent.contains("seed"));
 
